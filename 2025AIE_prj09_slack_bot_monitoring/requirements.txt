@@ -1,0 +1,3 @@
+slack_sdk
+boto3
+pyyaml
