@@ -12,7 +12,23 @@ def load_config():
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-def get_channel_messages(channel_id, oldest=None, latest=None, limit=200):
+def get_user_name(user_id):
+    """
+    SlackのユーザーIDからユーザー名（表示名）を取得する
+    ※Botの投稿など、user_idがない場合は None を返す
+    """
+    config = load_config()
+    client = WebClient(token=config["slack"]["bot_token"])
+    
+    try:
+        response = client.users_info(user=user_id)
+        profile = response["user"]["profile"]
+        return profile.get("display_name") or profile.get("real_name") or user_id
+    except SlackApiError as e:
+        print(f"⚠️ ユーザー名取得失敗: {user_id} - {e.response['error']}")
+        return user_id  # fallback
+        
+def get_channel_messages(channel_id, oldest=None, latest=None, limit=1000):
     """
     指定チャンネルの投稿を取得（期間指定対応）
     :param channel_id: SlackのチャンネルID
@@ -39,9 +55,21 @@ def get_channel_messages(channel_id, oldest=None, latest=None, limit=200):
 
         messages = []
         for msg in response.get("messages", []):
+            user_id = msg.get("user") or msg.get("bot_id") or "UNKNOWN"
+            
+            # 人間ユーザーの場合のみ名前をAPIで取得
+            user_name = None
+            if "user" in msg:
+                user_name = get_user_name(user_id)
+            elif "bot_profile" in msg:
+                user_name = msg["bot_profile"].get("name", "BOT")
+            else:
+                user_name = "UNKNOWN"
+
             messages.append({
                 "message_ts": msg.get("ts"),
-                "user_id": msg.get("user", "BOT"),
+                "user_id": user_id,
+                "user_name": user_name,
                 "channel_id": channel_id,
                 "text": msg.get("text"),
                 "timestamp": datetime.fromtimestamp(float(msg.get("ts"))).isoformat(),

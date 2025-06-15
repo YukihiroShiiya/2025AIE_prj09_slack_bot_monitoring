@@ -1,7 +1,7 @@
 from slack_client import get_channel_messages
 from dynamodb_client import save_message_to_dynamodb
 
-def fetch_and_save_messages(channel_id: str, oldest=None, latest=None, limit=200):
+def fetch_and_save_messages(channel_id: str, oldest=None, latest=None, limit=1000):
     """
     Slackの投稿を取得し、DynamoDBに保存する（任意で期間指定可能）
     """
