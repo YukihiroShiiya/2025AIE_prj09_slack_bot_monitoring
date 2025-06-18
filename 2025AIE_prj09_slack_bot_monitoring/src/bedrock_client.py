@@ -11,7 +11,7 @@ def call_bedrock_violation_score(post_text: str) -> str:
     ガイドライン遵守スコアを取得
     """
     prompt = build_prompt(post_text)
-    print(prompt)
+    #print(prompt)
     client = boto3.client("bedrock-runtime", region_name="us-east-1")
 
     conversation = [

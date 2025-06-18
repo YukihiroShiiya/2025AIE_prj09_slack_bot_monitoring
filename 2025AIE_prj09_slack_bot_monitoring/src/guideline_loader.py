@@ -1,52 +1,38 @@
-# src/guideline_loader.py
-
-import yaml
 import os
-
-def load_guidelines():
-    """
-    YAMLファイルからガイドラインリストを読み込む
-    """
-    path = os.path.join(os.path.dirname(__file__), "..", "config", "guidelines.yaml")
-    with open(path, "r") as f:
-        data = yaml.safe_load(f)
-    return data.get("guidelines", [])
-
-def load_prompt_template():
-    """
-    YAMLファイルからプロンプトテンプレートを読み込む
-    """
-    path = os.path.join(os.path.dirname(__file__), "..", "config", "prompt_template.yaml")
-    with open(path, "r") as f:
-        data = yaml.safe_load(f)
-    return data.get("template", "")
+import yaml
 
 def build_prompt(post_text: str) -> str:
     """
-    YamlからガイドラインとFew-shot例を読み込み、プロンプトを生成
+    prompt_template.yaml と guidelines.yaml を組み合わせて最終プロンプトを構築
     """
-    # config/prompt_template.yaml を読み込む
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config", "prompt_template.yaml")
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)
+    # ファイルパス
+    base_dir = os.path.dirname(__file__)
+    prompt_path = os.path.join(base_dir, "..", "config", "prompt_template.yaml")
+    guideline_path = os.path.join(base_dir, "..", "config", "guidelines.yaml")
 
-    guidelines = config.get("guidelines", [])
-    examples = config.get("examples", [])
+    # YAML読み込み
+    with open(prompt_path, "r", encoding="utf-8") as f:
+        prompt_config = yaml.safe_load(f)
 
-    prompt = "あなたは社内ガイドライン遵守チェックの専門AIです。\n"
-    prompt += "以下のガイドラインに照らして、投稿がどの程度『ガイドラインを守っているか』を評価してください。\n"
-    prompt += "出力はスコアの半角数値 0～100 の範囲です。\n\n"
+    with open(guideline_path, "r", encoding="utf-8") as f:
+        guideline_config = yaml.safe_load(f)
 
-    prompt += "【ガイドライン】\n"
-    for rule in guidelines:
-        prompt += f"- {rule}\n"
+    # 各要素取り出し
+    template_text = prompt_config.get("template", "")
 
-    if examples:
-        prompt += "\n【例】\n"
-        for ex in examples:
-            prompt += f"投稿: {ex['input']}\nスコア: {ex['output']}\n"
+    guideline_list = guideline_config.get("guidelines", [])
 
-    prompt += f"\n【投稿内容】\n\"\"\"{post_text}\"\"\"\n"
-    prompt += "\n【出力フォーマット】\n- スコア（0～100の数値）:"
+    # 安全対策
+    if not template_text:
+        raise ValueError("テンプレート本文が読み込めませんでした（templateが空です）")
+
+    # 🔧 ガイドラインを文字列に整形
+    formatted_guidelines = ""
+    for guideline in guideline_list:
+        formatted_guidelines += f"- {guideline}\n"
+
+    # 🔧 テンプレートにガイドラインと投稿内容を埋め込む
+    prompt = template_text.replace("{guidelines}", formatted_guidelines.strip())
+    prompt = prompt.replace("{text}", post_text)
 
     return prompt
